@@ -14,12 +14,11 @@ headers = {
 
 def get_song_by_id(id):
     url = "https://www.melon.com/song/detail.htm?songId="+str(id)
-    req = urllib.request.Request(url, headers = headers)
+    req = urllib.request.Request(url, headers=headers)
 
     html = urlopen(req)
     soup = BeautifulSoup(html, "lxml")
     if not soup.text.strip():
-
         return None
 
     song_name = soup.find('div', {"class" : "song_name"})
@@ -40,13 +39,13 @@ def get_song_by_id(id):
                         index=[str(id)])
 
 if __name__ == "__main__" :
-    f = open("songId.csv", 'r')
-    songId_list = list(map(int, f.read().splitlines()))
+    f = open("csvs/songID_new.csv", 'r')
+    songId_list = list(map(int, f.read().splitlines()[:-1]))
     start = songId_list[0]
 
     try:
-        csv = pd.read_csv("songs.csv", index_col = 0)
-        start = max(csv.index)
+        csv = pd.read_csv("csvs/songs_new.csv", index_col = 0)
+        start = csv.index[-1]
         print(start)
         fileNotExist = False
     except:
@@ -64,10 +63,10 @@ if __name__ == "__main__" :
             exit(1)
         if tmp is not None:
             if fileNotExist:
-                tmp.to_csv("songs.csv")
+                tmp.to_csv("csvs/songs_new.csv")
                 fileNotExist = False
             else:
-                tmp.to_csv("songs.csv", mode='a', header=False)
+                tmp.to_csv("csvs/songs_new.csv", mode='a', header=False)
                 print(f"id {songId_list[i]} writed,")
                 print(tmp)
 

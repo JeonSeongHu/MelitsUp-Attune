@@ -1,0 +1,12 @@
+/csvs
+/csvs(230114)
+/csvs(230118)
+/csvs(backuped)
+/flagged
+/gradio_cached_examples
+/.ipynb_checkpoints
+/venv
+
+.tsv
+.csv
+.npy

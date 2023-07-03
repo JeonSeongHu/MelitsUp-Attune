@@ -17,12 +17,6 @@ options.add_argument("--headless")
 options.add_argument(f"user-agent={ua.random}")
 driver = webdriver.Chrome(options=options)
 
-try:
-    os.remove("csvs/artistID_new.csv")
-    os.remove("csvs/songID_new.csv")
-    os.remove("csvs/songs_new.csv")
-except:
-    pass
 
 with open("csvs/songID.csv", 'r') as f:
     try :
@@ -35,73 +29,23 @@ with open("csvs/songID.csv", 'r') as f:
 with open("csvs/artistID.csv", 'r') as f:
     artistId_list = list(map(int, f.read().splitlines()))
 
-# new song artitst 찾기
-arr = get_artistID_in_new(driver=driver)
-
-# new Artist 여부 찾기
-artists_to_get_all_pages, artists_to_get_one_page = [], []
-for artist in arr:
-
-    if artist not in artistId_list:
-        artists_to_get_all_pages.append(artist)
-    else:
-        artists_to_get_one_page.append(artist)
-
-artists_to_get_all_pages = list(set(artists_to_get_all_pages))
-artists_to_get_one_page = list(set(artists_to_get_one_page))
-
-# #### 원하는 가수 추가 시 ####
-# f = open("csvs/artistID_new.csv", 'r')
-# artists_to_get_all_pages = list(map(int, f.read().splitlines()))
-# f.close()
-# #################################
-
-print(f"new artist: {len(artists_to_get_all_pages)}")
-print(f"existing artist: {len(artists_to_get_one_page)}")
-pd.Series(artists_to_get_all_pages).to_csv("csvs/artistID_new.csv", mode='a', index=False, header=False)
-
-# Artist로 Song ID 크롤링, 새 가수
-new_songID = []
-for artist in artists_to_get_all_pages:
-    try:
-        id = get_songID_by_artist(artist,driver=driver,time_wait=0)
-        pd.Series(id).to_csv("csvs/songID_new.csv", mode='a', index=False, header=False)
-        if not id:
-            print(f"artist ID {artist} 중 차단됨.")
-            exit(1)
-        print(f"artist ID {artist} Done")
-    except:
-        print(f"artist ID {artist} 중 차단됨.")
-        exit(1)
-
-# Artist로 Song ID 크롤링, 이미 있는 가수
-tmp_songID = []
-for artist in artists_to_get_one_page:
-    try:
-        id = get_songID_by_artist(artist,driver=driver,num_pages=1,time_wait=0)
-        pd.Series(id).to_csv("csvs/songID_new.csv", mode='a', index=False, header=False)
-        if not id:
-            print(f"artist ID {artist} 중 차단됨.")
-            exit(1)
-        print(f"artist ID {artist} Done")
-    except:
-        print(f"artist ID {artist} 중 차단됨.")
-        exit(1)
-
 # new SongID로 가사 크롤링
 with open("csvs/songID_new.csv", 'r') as f:
     new_songID = list(set(list(map(int, f.read().splitlines()))))
-    print(len(new_songID))
-    new_songID = [i for i in new_songID if i not in songId_list]
-    print(len(new_songID))
     new_songID.sort()
+pd.Series(new_songID).to_csv("csvs/songID_new.csv", mode="w", index=False, header=False)
 
+if os.path.isfile("csvs/songs_new.csv"):
+    csv = pd.read_csv("csvs/songs_new.csv", index_col=0)
+    startindex = new_songID.index(csv.tail(1).index)+1
+else:
+    startindex = 0
 
 # songID로 song lyrics 크롤링
-for i, songID in enumerate(new_songID):
+for i, songID in enumerate(new_songID[startindex:]):
     try:
         song_info = get_song_by_id(songID)
-        print(f"{i+1}: ", end="")
+        print(f"{startindex+i+1}: ", end="")
         print(song_info)
         if i == 0 and not os.path.isfile("csvs/songs_new.csv"):
             song_info.to_csv("csvs/songs_new.csv", mode='w')
@@ -113,6 +57,7 @@ for i, songID in enumerate(new_songID):
         exit(1)
 
 print("end")
+
 # 임베딩 하기
 embedder1 = SentenceTransformer("jhgan/ko-sroberta-multitask", device='cuda')
 embedder2 = SentenceTransformer("snunlp/KR-SBERT-V40K-klueNLI-augSTS", device='cuda')
@@ -143,8 +88,8 @@ corpus_embeddings = torch.cat([corpus_embeddings, corpus_embeddings_new], dim=0)
 np.save('csvs/lyrics_embeddings1', corpus_embeddings1.cpu().numpy())
 np.save('csvs/lyrics_embeddings2', corpus_embeddings2.cpu().numpy())
 np.save('csvs/lyrics_embeddings', corpus_embeddings.cpu().numpy())
-
-
+#
+#
 # csv 파일 합치기, songs
 songs = pd.concat([songs, new_songs], axis=0)
 songs.to_csv("csvs/songs.csv")
@@ -164,7 +109,45 @@ pd.Series(artistId_list).to_csv("csvs/artistID.csv", index=False, header=False)
 
 
 # Query sentences / 여기에 검색할 문장 넣기. 여러개를 한 번에 넣어도 됨.
-queries = ["""] """]
+queries = [""""산타는 엄마 아빠 둘 중 하나일 테고
+죠지 죠지는 죽었지만
+매년 이맘때 되면 아직 들뜨는 건
+너 때문도 아니야
+Ooh la 크리스마스다
+외로웁고 좋은 날 oh
+oh darling kiss me babe
+그냥 혼자 해본 말이야
+산타는 선물 같은 눈칫밥을 주고
+캐빈 캐빈은 늙었지만
+너도 기다렸잖아 아닌 척하지 마
+lonely Christmas it’s okay
+Ooh la 크리스마스다
+외로웁고 좋은 날 oh
+oh darling kiss me babe
+그냥 혼자 해본 말이야
+앙상한 가지 위에도
+떠도는 공기 속에도
+방구석 처박혀 보는 영화에도
+made in Christmas time
+love actually is all around you
+Ooh la it’s Christmas again
+Ooh la it’s Christmas again
+눈이라도 내려줘
+온 세상 하얗게 물들여줘
+Ooh la 크리스마스다
+외로웁고 좋은 날 oh
+oh darling kiss me babe
+그냥 해본 말은 아니야
+그냥 해본 말은 아닌데
+oh lonely Christmas it’s ok
+Christmas Christmas
+We made in Christmas time
+Christmas Christmas
+We made in Christmas time
+Christmas Christmas
+We made in Christmas time
+Christmas Christmas
+We made in Christmas time"""]
 
 top_k = 1000
 top_real = 15 # 실제 출력할 개수

@@ -8,21 +8,18 @@ import pandas as pd
 
 def run(query, start=2015, end=2023, genre = None):
     #pre-trained 모델 사용. https://github.com/jhgan00/ko-sentence-transformers 참고.
-    embedder1 = SentenceTransformer("jhgan/ko-sroberta-multitask", device='cuda')
-    embedder2 = SentenceTransformer("snunlp/KR-SBERT-V40K-klueNLI-augSTS", device='cuda')
+    embedder = SentenceTransformer("BM-K/KoDiffCSE-RoBERTa", device='cuda')
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-    songs = pd.read_csv("csvs/songs.csv", index_col=0)
+    songs = pd.read_csv("SBERT/songs_new2.csv")
 
-    #load embeddings -이미 만들어진 임베딩을 불러올 때 사용
-    corpus_embeddings = np.load('csvs/lyrics_embeddings.npy')
+    # #load embeddings -이미 만들어진 임베딩을 불러올 때 사용
+    corpus_embeddings = np.load('csvs/new_lyrics_embeddings.npy')
     corpus_embeddings = torch.as_tensor(corpus_embeddings, device=device)
 
     top_k = 1000
     top_real = 30 # 실제 출력할 개수
-    query_embedding1 = embedder1.encode(query, convert_to_tensor=True)
-    query_embedding2 = embedder2.encode(query, convert_to_tensor=True)
-    query_embedding = (query_embedding1 + query_embedding2) / 2
+    query_embedding = embedder.encode(query, convert_to_tensor=True)
     cos_scores = util.pytorch_cos_sim(query_embedding, corpus_embeddings)[0].cpu()
 
     ret = []
@@ -39,7 +36,7 @@ def run(query, start=2015, end=2023, genre = None):
                 i += 1
                 print(songs['song_name'].iloc[int(idx)])
                 ret.append([songs['song_name'].iloc[int(idx)], songs['artist'].iloc[int(idx)],
-                   int(cos_scores[idx].item()*10000)/10000,songs['genre'].iloc[int(idx)], songs['date'].iloc[int(idx)], "https://www.melon.com/song/detail.htm?songId="+str(songs.iloc[[int(idx)]].index.values.item())])
+                   int(cos_scores[idx].item()*10000)/10000,songs['genre'].iloc[int(idx)], songs['date'].iloc[int(idx)], "https://www.melon.com/album/detail.htm?albumId="+str(songs['album_id'].iloc[[int(idx)]])])
                 print(ret)
                 if i == top_real:
                     break
@@ -376,7 +373,7 @@ It’s neither man nor woman
     )
 
 
-    demo.launch(share=False)
+    demo.launch(share=True)
 
 
 
